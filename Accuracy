@@ -1,0 +1,73 @@
+# patterns:
+# - 75% din utilizatorii care au renuntat au avut abonament Month to Month
+# - Clienții importanți care s-au mutat aveau ca metodă de plată cecul electronic.
+# - clientii ce au fibra optica sunt predispusi sa renunte la abonament 
+#   (68% au fibra optica din cei ce au renuntat)
+# - clientii ce au persoane ce depind de ei sunt predispusi sa renunte la abonament
+# - clientii ce nu au un partener sunt predispusi sa renunte la abonament
+# - clientii ce nu sunt pensionari sunt predispusi sa renunte la abonament
+# - clientii ce nu au security online sunt predispusi sa renunte la abonament
+# - clientii ce nu platesc pe hartie sunt predispusi sa renunte la abonament
+# - clientii ce nu apealeza la tech support sunt predispusi sa renunte la abonament
+# - clientii ce au phone service sunt predispusi sa renunte la abonament
+# - clientii cu cat platesc mai mult sunt predispusi sa renunte la abonament
+# - clientii ce au contract mai nou si au total charges mai mic sunt predispusi sa renunte la abonament
+
+# importarea librariiei panda
+import pandas as pd
+from sklearn.preprocessing import LabelEncoder
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.tree import DecisionTreeClassifier, plot_tree
+from sklearn.metrics import accuracy_score
+
+# functie care transforma datele de tip object in date de tip int
+def object_to_int(dataframe_series):
+    if dataframe_series.dtype=='object':
+        dataframe_series = LabelEncoder().fit_transform(dataframe_series)
+    return dataframe_series
+
+# citirea datelor din fisier
+df = pd.read_csv('./WA_Fn-UseC_-Telco-Customer-Churn.csv')
+# aplicarea functiei object_to_int pe fiecare coloana, transforma 
+# valorea NO in 0 si YES in 1, etc
+df = df.apply(lambda x: object_to_int(x))
+# analiza corelatiei datelor din fisier in functie de coloana Churn
+df.corr()['Churn'].sort_values(ascending = False)
+
+# in x se vor salva toate coloanele din fisier in afara de Churn
+X = df.drop(columns = ['Churn'])
+# in y se va salva coloana Churn
+y = df['Churn'].values
+
+# impartirea datelor in setul de antrenare si setul de testare
+X_train, X_test, y_train, y_test = train_test_split(X,y,test_size = 0.30, random_state = 40, stratify=y)
+
+# coloanele care contin date de tip numeric
+num_cols = ["tenure", 'MonthlyCharges', 'TotalCharges']
+# standardizarile datelor 
+df_std = pd.DataFrame(StandardScaler().fit_transform(df[num_cols].astype('float64')),columns=num_cols)
+# punem datele din PaymentMethod, Contract, InternetService in variabilele one-hot encoding,
+# ele fiind de tip object si avand mai multe valori
+cat_cols_ohe =['PaymentMethod', 'Contract', 'InternetService']
+# punem restul datelor in variabilele label encoding, ele fiind de tip boolean, 0 sau 1, TRUE SAU FALSE, yes or no
+cat_cols_le = ['Dependents', 'customerID', 'StreamingTV', 'PhoneService', 'gender', 'StreamingMovies', 'PaperlessBilling', 'MultipleLines', 'SeniorCitizen', 'TechSupport', 'DeviceProtection', 'OnlineBackup', 'OnlineSecurity', 'Partner']
+
+# utilitarul  de standardizare  a datelor
+scaler= StandardScaler()
+
+# standardizarea datelor, datele de training si datele de testare
+X_train[num_cols] = scaler.fit_transform(X_train[num_cols])
+X_test[num_cols] = scaler.transform(X_test[num_cols])
+
+# creem modelul unde vom stoca datele de arbore de decizie
+dt_model = DecisionTreeClassifier(random_state=40)
+
+# antream modelul cu datele de antrenare
+dt_model.fit(X_train, y_train)
+
+# testam modelul antrenat anterior cu datele de antrenare
+y_pred = dt_model.predict(X_test)
+
+# acuratete algoritmului
+print("Accuracy:", accuracy_score(y_test, y_pred))
